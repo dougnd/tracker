@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -14,6 +16,8 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/pkg/errors"
 )
+
+var username = flag.String("username", "", "Your JIRA username")
 
 const jiraTimeFormat = "2006-01-02T15:04:05.00-0700"
 
@@ -87,7 +91,7 @@ func (menu *JiraMenu) check(key string) {
 }
 
 func getIssues() ([]Issue, error) {
-	_, err := exec.Command("jira", "login").Output()
+	_, err := exec.Command("jira", "login", "-u", *username).Output()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not login")
 	}
@@ -107,10 +111,18 @@ func getIssues() ([]Issue, error) {
 }
 
 func main() {
+	flag.Parse()
+	if *username == "" {
+		user := os.Getenv("USER")
+		username = &user
+	}
+	log.Printf("Using JIRA username %v.", *username)
+
 	onExit := func() {
 		fmt.Println("Starting onExit")
 	}
 	_ = onExit
+
 	// Should be called at the very beginning of main().
 	systray.Run(onReady, onExit)
 }
@@ -156,7 +168,7 @@ func addWorkLog(key string, started time.Time, d time.Duration) error {
 	}
 	log.Println("Adding worklog for ", key, ", message: ", resp.Text)
 
-	_, err = exec.Command("jira", "login").Output()
+	_, err = exec.Command("jira", "login", "-u", *username).Output()
 	if err != nil {
 		return errors.Wrap(err, "could not login!")
 	}
@@ -220,7 +232,7 @@ func addIssue(menu *JiraMenu) {
 		return
 	}
 
-	_, err = exec.Command("jira", "login").Output()
+	_, err = exec.Command("jira", "login", "-u", *username).Output()
 	if err != nil {
 		return
 	}
